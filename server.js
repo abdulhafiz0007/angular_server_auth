@@ -1,45 +1,38 @@
-// server.js
-
 const express = require('express');
 const cors = require('cors');
 const bodyParser = require('body-parser');
-
+const jwt = require('jsonwebtoken');
 const app = express();
+
+const SECRET_KEY = 'your_secret_key';
 const PORT = process.env.PORT || 3000;
 
-// Middleware
 app.use(cors());
 app.use(bodyParser.json());
 
-// Dummy user database
-const users = [];
+let users = []; // In-memory user store (for demo)
 
-// Register route
-app.post('/api/register', (req, res) => {
-  const { username, password } = req.body;
+// Register
+app.post('/register', (req, res) => {
+  const { username, phone, email, password } = req.body;
 
-  const existingUser = users.find(user => user.username === username);
-  if (existingUser) {
-    return res.status(400).json({ message: 'Username already exists' });
-  }
+  const userExists = users.find(u => u.email === email);
+  if (userExists) return res.status(400).json({ message: 'User already exists' });
 
-  users.push({ username, password });
+  const newUser = { id: Date.now(), username, phone, email, password };
+  users.push(newUser);
   res.status(201).json({ message: 'User registered successfully' });
 });
 
-// Login route
-app.post('/api/login', (req, res) => {
-  const { username, password } = req.body;
+// Login
+app.post('/login', (req, res) => {
+  const { email, password } = req.body;
 
-  const user = users.find(user => user.username === username && user.password === password);
-  if (!user) {
-    return res.status(401).json({ message: 'Invalid credentials' });
-  }
+  const user = users.find(u => u.email === email && u.password === password);
+  if (!user) return res.status(401).json({ message: 'Invalid credentials' });
 
-  res.json({ message: 'Login successful', user: { username } });
+  const token = jwt.sign({ id: user.id, email: user.email }, SECRET_KEY, { expiresIn: '1h' });
+  res.status(200).json({ token });
 });
 
-// Start the server
-app.listen(PORT, () => {
-  console.log(`Server is running on http://localhost:${PORT}`);
-});
+app.listen(PORT, () => console.log(`Server running on port ${PORT}`));
